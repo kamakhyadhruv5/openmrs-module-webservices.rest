@@ -58,7 +58,7 @@ import java.util.jar.JarFile;
  * Convenient helper methods for the Rest Web Services module.
  */
 public class RestUtil implements GlobalPropertyListener {
-	
+	private static final String ERROR_KEY = "webservices.rest.error.invalid.submission";
 	private static Log log = LogFactory.getLog(RestUtil.class);
 	
 	private static boolean contextEnabled = true;
@@ -872,13 +872,23 @@ public class RestUtil implements GlobalPropertyListener {
 	 * @param ex
 	 * @return
 	 */
+	
 	public static SimpleObject wrapValidationErrorResponse(ValidationException ex) {
 		
 		MessageSourceService messageSourceService = Context.getMessageSourceService();
 		
 		SimpleObject errors = new SimpleObject();
-		errors.add("message", messageSourceService.getMessage("webservices.rest.error.invalid.submission"));
-		errors.add("code", "webservices.rest.error.invalid.submission");
+		String mainMessage = ex.getMessage();
+
+         if (mainMessage == null || mainMessage.isEmpty()) {
+            mainMessage = messageSourceService.getMessage(
+              ERROR_KEY,
+              null,
+              Context.getLocale()
+        );
+}
+		errors.add("code", ERROR_KEY);
+        errors.add("message", mainMessage);
 		
 		List<SimpleObject> globalErrors = new ArrayList<SimpleObject>();
 		SimpleObject fieldErrors = new SimpleObject();

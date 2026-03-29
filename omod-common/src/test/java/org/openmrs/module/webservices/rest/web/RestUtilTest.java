@@ -8,6 +8,9 @@
  * graphic logo is a trademark of OpenMRS Inc.
  */
 package org.openmrs.module.webservices.rest.web;
+import org.springframework.validation.BindException;
+import org.springframework.validation.Errors;
+import org.openmrs.api.ValidationException;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,7 +19,13 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.junit.jupiter.api.Assertions;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmrs.GlobalProperty;
@@ -25,6 +34,7 @@ import org.openmrs.api.context.Context;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.web.test.jupiter.BaseModuleWebContextSensitiveTest;
 import org.springframework.mock.web.MockHttpServletRequest;
+
 
 /**
  * Tests for the {@link RestUtil} class.
@@ -221,4 +231,53 @@ public class RestUtilTest extends BaseModuleWebContextSensitiveTest {
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
 		Assertions.assertEquals("", errorResponseMap.get("detail"));
 	}
+   @Test
+    public void shouldUseExceptionMessageWhenAvailable() {
+    BindException bindEx = new BindException(new Object(), "objectName");
+    bindEx.reject("error.code", new Object[]{"interpolatedValue"}, "Default message with {0}");
+    ValidationException ex = new ValidationException("Test message", (Errors) bindEx);
+
+    SimpleObject result = RestUtil.wrapValidationErrorResponse(ex);
+
+    SimpleObject errors = (SimpleObject) result.get("error");
+    List<SimpleObject> globalErrors = (List<SimpleObject>) errors.get("globalErrors");
+    String message = (String) globalErrors.get(0).get("message");
+    assertNotNull(message);
+    assertFalse(message.contains("{0}"));
+    }
+
+   @Test
+    public void shouldFallbackWhenMessageIsNull() {
+    BindException bindEx = new BindException(new Object(), "objectName");
+    bindEx.reject("error.code", new Object[]{"interpolatedValue"}, "Fallback message with {0}");
+    ValidationException ex = new ValidationException("", (Errors) bindEx);
+
+    SimpleObject result = RestUtil.wrapValidationErrorResponse(ex);
+
+    SimpleObject errors = (SimpleObject) result.get("error");
+    List<SimpleObject> globalErrors = (List<SimpleObject>) errors.get("globalErrors");
+    String message = (String) globalErrors.get(0).get("message");
+    assertNotNull(message);
+    assertFalse(message.contains("{0}"));
+   }
+     @Test
+     public void shouldHandlePlaceholderInExceptionMessage() {
+
+    		BindException bindEx = new BindException(new Object(), "objectName");
+			bindEx.reject("error.code", new Object[]{"value"}, "Error occurred {0}");
+
+    		ValidationException ex = new ValidationException("Error occurred {0}",(Errors) bindEx);
+
+    		SimpleObject result = RestUtil.wrapValidationErrorResponse(ex);
+
+    		SimpleObject errors = (SimpleObject) result.get("error");
+    		String message = (String) errors.get("message");
+
+    		assertNotNull(message);
+    		assertTrue(message.contains("{0}"));
+			assertTrue(message.contains("Error occurred"));
+	}
+
+
+   
 }
