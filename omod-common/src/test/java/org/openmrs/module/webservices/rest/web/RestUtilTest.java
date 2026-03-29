@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmrs.GlobalProperty;
@@ -258,6 +260,23 @@ public class RestUtilTest extends BaseModuleWebContextSensitiveTest {
     assertNotNull(message);
     assertFalse(message.contains("{0}"));
    }
+     @Test
+     public void shouldHandlePlaceholderInExceptionMessage() {
+
+    		BindException bindEx = new BindException(new Object(), "objectName");
+			bindEx.reject("error.code", new Object[]{"value"}, "Error occurred {0}");
+
+    		ValidationException ex = new ValidationException("Error occurred {0}",(Errors) bindEx);
+
+    		SimpleObject result = RestUtil.wrapValidationErrorResponse(ex);
+
+    		SimpleObject errors = (SimpleObject) result.get("error");
+    		String message = (String) errors.get("message");
+
+    		assertNotNull(message);
+    		assertTrue(message.contains("{0}"));
+			assertTrue(message.contains("Error occurred"));
+	}
 
 
    
